@@ -5,6 +5,7 @@
 # Copyright:: 2018, The Authors, All Rights Reserved.
 
 #create group and user tomcat 
+=begin
 group 'tomcat' do
     group_name 'tomcat'
 end
@@ -14,21 +15,20 @@ user 'tomcat' do
     home '/opt/tomcat'
     shell '/bin/false'
 end
-
+=end
 temp_path = Chef::Config[:file_cache_path]
 
-#execute "wget http://redrockdigimark.com/apachemirror/tomcat/tomcat-8/v8.5.27/bin/apache-tomcat-8.5.27.zip"
 remote_file "#{temp_path}/apache-tomcat-8*.zip" do
     source node['tomcat']['download_url']
-    group 'tomcat'
-    owner node['tomcat']['tomcat_user']
+    #group 'tomcat'
+    #owner node['tomcat']['tomcat_user']
     mode '0644'
     action :create
 end
 
 directory node['tomcat']['install_location'] do
     #group 'tomcat'
-    owner node['tomcat']['tomcat_user']
+    #owner node['tomcat']['tomcat_user']
     mode '0755'
     not_if { ::Dir.exist?(node['tomcat']['install_location'])}
     action :create
@@ -59,44 +59,58 @@ execute 'move' do
     ignore_failure true
 end
 
-execute 'read_grp' do
-    command 'chmod -R g+r /opt/tomcat/conf'
-end
-
-execute 'execute_grp' do
-    command 'chmod  g+x /opt/tomcat/conf'
-end
-
-execute 'owner' do
-    command 'chown -R tomcat webapps/ work/ temp/ logs/'
-    cwd node['tomcat']['install_location']
-end
+execute 'add_execute_bin' do
+    command 'chmod -R +x /opt/tomcat/bin'
+end     
 
 #Install init script
-template "/etc/init.d/tomcat8" do
-    source 'tomcat8.erb'
+template "/etc/systemd/system/tomcat.service" do
+    source 'tomcat.erb'
     owner 'root'
     mode '0755'
 end
-
+=begin
 #edit tomcat-users.xml
 template "/opt/tomcat/conf/tomcat-users.xml" do
     source "users.erb"
     mode '0644'
     notifies :restart, "service[tomcat8]"
 end
+=end
+cookbook_file '/opt/tomcat/conf/tomcat-users.xml' do
+  source 'tomcat-users.xml'
+  owner 'root'
+  group 'root'
+  mode '0755'
+  action :create
+end
+
 #edit context.xml
+=begin
 execute "mv /opt/tomcat/webapps/manager/META-INF/context.xml /opt/tomcat/webapps/manager/META-INF/context.xml.bak"
 template "/opt/tomcat/webapps/manager/META-INF/context.xml" do
     source "context.erb"
     mode '0644'
     notifies :restart, "service[tomcat8]"
 end
-
+=end
+cookbook_file '/opt/tomcat/webapps/manager/META-INF/context.xml' do
+  source 'context.xml'
+  owner 'root'
+  group 'root'
+  mode '0755'
+  action :create
+end
+execute "start_tomcat" do
+  cwd node['tomcat']['install_location']	
+  command 'sudo sh bin/startup.sh'
+end
+=begin
 #Start and enable tomcat service if requested
-service 'tomcat8' do
+service 'tomcat' do
     action [:enable, :start]
     only_if { node['tomcat']['autostart'] }
-  end  
+  end 
+=end 
 # sudo chmod +x /opt/tomcat/bin/*
 #TO START AND STOP RUN FILES FROM /opt/tomcat/bin
