@@ -13,7 +13,7 @@ node['s3cmd']['users'].each do |user|
     if user== 'root' 
         home = '/root'
     else 
-        home = '/home/#{user}'
+        home = "/home/#{user}"
     end
     
     if File.exist? home
